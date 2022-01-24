@@ -60,7 +60,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  *   4) Rumble on non-overlapping mechanical actions. e.g. arm fully-extended or fully-retracted.
  *   5) Use isRumbling() to hold off on a new rumble if one is already in progress.
  *
- * The examples shown here are representstive of how to invoke a gamepad rumble.
+ * The examples shown here are representative of how to invoke a gamepad rumble.
  * It is assumed that these will be modified to suit the specific robot and team strategy needs.
  *
  * ########   Read the telemetry display on the Driver Station Screen for instructions.   ######
@@ -86,7 +86,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list.
  */
 
-@Disabled
+
 @TeleOp(name="Concept: Gamepad Rumble", group ="Concept")
 public class ConceptGamepadRumble extends LinearOpMode
 {
@@ -112,7 +112,6 @@ public class ConceptGamepadRumble extends LinearOpMode
                 .addStep(0.0, 0.0, 250)  //  Pause for 250 mSec
                 .addStep(1.0, 0.0, 250)  //  Rumble left motor 100% for 250 mSec
                 .build();
-
         telemetry.addData(">", "Press Start");
         telemetry.update();
 

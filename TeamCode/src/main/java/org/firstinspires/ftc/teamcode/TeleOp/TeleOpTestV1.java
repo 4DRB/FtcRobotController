@@ -6,6 +6,7 @@ import com.qualcomm.hardware.rev.Rev2mDistanceSensor;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -37,6 +38,7 @@ public int stopPos;
     private DcMotor kanon = null;
     private DcMotor turret = null;
     private Servo grip =null;
+    private CRServo baws =null;
     double wTarget = 0;
     double power = 1;//1.41
 
@@ -97,6 +99,7 @@ public int stopPos;
         //Servos
 
         grip = hardwareMap.get(Servo.class,"SR_GATE");
+        baws = hardwareMap.get(CRServo.class,"SR_BALLS");
         //colorDown.setGain(gain);
         waitForStart();
         //TeleThread.run();
@@ -108,7 +111,8 @@ public int stopPos;
             BeyBlade();
             BetterIntakeTeleOp();
             Kanon();
-            Turret();
+            //Turret(); Obsolete
+            //Baws();   inclus in betterIntake
 
         }
     }
@@ -176,6 +180,14 @@ public int stopPos;
                 grip.setPosition(0.5);
             }
         }
+    public void Baws() {
+        if (gamepad1.x) {
+            baws.setPower(-0.5);
+        }else if (gamepad1.y)
+        {
+            baws.setPower(0);
+        }
+    }
     public void Turret(){
 
 
@@ -221,9 +233,9 @@ public int stopPos;
         } else downk = 1;
 
         if (gamepad1.dpad_up) {
-            kanon.setPower(0.6 * upk);
+            kanon.setPower(-0.6 * upk);
         } else if (gamepad1.dpad_down) {
-            kanon.setPower(-0.6*downk);
+            kanon.setPower(0.6*downk);
         } else {
             kanon.setPower(0);
         }
@@ -248,20 +260,19 @@ public int stopPos;
     public void BetterIntakeTeleOp() {
         double IntakePower = 1;
 
-
         DcMotorEx InTake = hardwareMap.get(DcMotorEx.class, "COLLECT");
         InTake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         if (gamepad1.right_bumper) {//1
-            InTake.setPower(IntakePower);
-
+            InTake.setPower(-IntakePower);
+            baws.setPower(-0.5);
         } else if (gamepad1.right_stick_button)//-1
         {
-            InTake.setPower(-IntakePower);
-
+            InTake.setPower(IntakePower);
+            baws.setPower(0.5);
         } else if (!gamepad1.right_bumper && !gamepad1.right_stick_button) {//0
             InTake.setPower(0);
-
+            baws.setPower(0);
         }
 
     }

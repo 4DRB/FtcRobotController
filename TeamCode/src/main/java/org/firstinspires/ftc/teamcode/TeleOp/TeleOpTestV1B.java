@@ -10,8 +10,10 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
@@ -34,6 +36,11 @@ public int stopPos;
     private DcMotor kanon = null;
     private DcMotor turret = null;
     private Servo grip =null;
+    private Servo Orbit1;
+    private Servo Orbit2;
+    double OT1;
+    double OT2;
+    double MOT;
     double wTarget = 0;
     double power = 1;//1.41
 
@@ -42,8 +49,8 @@ public int stopPos;
     BNO055IMU imu;
     private Orientation angles;
     public DistanceSensor sensorRange;
-    Rev2mDistanceSensor SDDreapta;
-    Rev2mDistanceSensor SDStanga;
+    DistanceSensor SDDreapta;
+    DistanceSensor SDStanga;
     DistanceUnit cm;
     //DcMotor TleftDrive = null;
     //DcMotor TrightDrive = null;
@@ -55,7 +62,10 @@ public int stopPos;
     double TICKS_PER_CM = (TICKS_PER_REV * DRIVE_GEAR_REDUCTION) / (WHEEL_DIAMETER_CM * 3.1415);
     AnalogInput potentiometer;
     int forkVal=0;
-
+    Gamepad.RumbleEffect customRumbleEffect;    // Use to build a custom rumble sequence.
+    ElapsedTime runtime = new ElapsedTime();    // Use to determine when end game is starting.
+    boolean secondHalf = false;                 // Use to prevent multiple half-time warning rumbles.
+    final double HALF_TIME = 60.0;              // Wait this many seconds before rumble-alert for half-time.
 
 
     /**
@@ -96,19 +106,38 @@ public int stopPos;
 
         grip = hardwareMap.get(Servo.class,"SR_GATE");
         */
+
+        //Servos
+
+        Orbit1=hardwareMap.get(Servo.class,"Orbit1");
+        Orbit2=hardwareMap.get(Servo.class,"Orbit2");
+
+        Orbit2.setDirection(Servo.Direction.REVERSE);
+
         //Sensors
         SDDreapta = hardwareMap.get(Rev2mDistanceSensor.class,"SDDreapta");
         SDStanga = hardwareMap.get(Rev2mDistanceSensor.class,"SDStanga");
-        SDDreapta.initialize();
-        SDStanga.initialize();
+
+        customRumbleEffect = new Gamepad.RumbleEffect.Builder()
+                .addStep(0.0, 1.0, 500)  //  Rumble right motor 100% for 500 mSec
+                .addStep(0.0, 0.0, 300)  //  Pause for 300 mSec
+                .addStep(1.0, 0.0, 250)  //  Rumble left motor 100% for 250 mSec
+                .addStep(0.0, 0.0, 250)  //  Pause for 250 mSec
+                .addStep(1.0, 0.0, 250)  //  Rumble left motor 100% for 250 mSec
+                .build();
+
 
         waitForStart();
+        runtime.reset();    // Start game timer.
+
         //TeleThread.run();
         while (opModeIsActive()) {
 
             DriveStick();
             DriveDPad(0.7);
-            AproachShippingHub();
+            AproachShippingHub(-0.3);
+            Rumble();
+            Orbit();
             /*Grip();
             BeyBlade();
             BetterIntakeTeleOp();
@@ -118,7 +147,55 @@ public int stopPos;
         }
     }
 
-    public void AproachShippingHub() {
+    public void Orbit()
+    {
+        if (gamepad1.dpad_up&&OT1<1&&OT2<1){
+            OT1=OT1+0.001;
+            OT2=OT2+0.001;
+        }
+        if (gamepad1.dpad_down&&OT1>0&&OT2>0){
+
+            if (OT1!=OT2){
+                MOT=(OT1+OT2)/2;
+                OT1=MOT;
+                OT2=MOT;
+            }
+            else {
+                OT1=OT1-0.001;
+                OT2=OT2-0.001;
+            }
+
+        }
+        if (gamepad1.dpad_right&&OT1<1&&OT2>0){
+            OT1=OT1+0.01;
+            OT2=OT2-0.01;
+        }
+        if (gamepad1.dpad_left&&OT1>0&&OT2<1){
+            OT1=OT1-0.01;
+            OT2=OT2+0.01;
+        }
+        Orbit1.setPosition(OT1);
+        Orbit2.setPosition(OT2);
+        telemetry.addData("OT1",OT1);
+        telemetry.addData("OT2",OT2);
+        telemetry.addData("Orbit1",Orbit1.getPosition());
+        telemetry.addData("Orbit2",Orbit2.getPosition());
+        telemetry.update();
+    }
+
+    public void Rumble()
+    {
+        if ((runtime.seconds() > HALF_TIME) && !secondHalf)  {
+            gamepad1.runRumbleEffect(customRumbleEffect);
+            secondHalf =true;
+        }
+        if (!secondHalf) {
+            telemetry.addData(">", "Halftime Alert Countdown: %3.0f Sec \n", (HALF_TIME - runtime.seconds()) );
+        }
+        //telemetry.update();
+    }
+
+    public void AproachShippingHub(double speed) {
 
         TleftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         TrightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -128,21 +205,26 @@ public int stopPos;
 
         if (gamepad1.a) {
 
-            TleftDrive.setPower(0.7);
-            TrightDrive.setPower(0.7);
-            BleftDrive.setPower(0.7);
-            BrightDrive.setPower(0.7);
+            TleftDrive.setPower(speed);
+            TrightDrive.setPower(speed);
+            BleftDrive.setPower(speed);
+            BrightDrive.setPower(speed);
 
-            while (SDDreapta.getDistance(cm) > 5 || SDStanga.getDistance(cm) > 5) {
+            while (SDDreapta.getDistance(DistanceUnit.CM) > 10 || SDStanga.getDistance(DistanceUnit.CM) > 10) {
 
-                if (SDDreapta.getDistance(cm) < 5) {
+                if (SDDreapta.getDistance(DistanceUnit.CM) < 9) {
                     TrightDrive.setPower(0);
                     BrightDrive.setPower(0);
+                    TleftDrive.setPower(speed/1.5);
+                    BleftDrive.setPower(speed/1.5);
                 }
-                if (SDStanga.getDistance(cm) < 5) {
+                if (SDStanga.getDistance(DistanceUnit.CM) < 9) {
                     TleftDrive.setPower(0);
                     BleftDrive.setPower(0);
+                    TrightDrive.setPower(speed/1.5);
+                    BrightDrive.setPower(speed/1.5);
                 }
+
             }
             TleftDrive.setPower(0);
             BleftDrive.setPower(0);
